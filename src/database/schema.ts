@@ -104,6 +104,15 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE tracks ADD COLUMN isrc TEXT;
     `,
   },
+  {
+    // v3: análisis musical cacheado (BPM / tonalidad / Camelot).
+    version: 3,
+    sql: `
+      ALTER TABLE tracks ADD COLUMN bpm REAL;
+      ALTER TABLE tracks ADD COLUMN musicalKey TEXT;
+      ALTER TABLE tracks ADD COLUMN camelot TEXT;
+    `,
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

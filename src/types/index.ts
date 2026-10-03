@@ -36,6 +36,12 @@ export interface AudioMetadata {
   isrc?: string;
   /** Ruta local a la portada, o data URI para previsualización. */
   artworkPath?: string;
+  /** Análisis musical cacheado (null hasta que se analiza; nunca inventado). */
+  bpm?: number;
+  /** Tonalidad detectada, p. ej. "A minor". */
+  key?: string;
+  /** Código Camelot de la tonalidad, p. ej. "8A". */
+  camelot?: string;
 }
 
 export interface Track {

@@ -71,7 +71,10 @@ export const TOOLS: ToolDef[] = [
       'Analyze a track file: duration, format, codec, bitrate, sample rate, channels, size. ' +
       'BPM/key/loudness are returned only when actually computed (null otherwise — never invented).',
     readOnly: true,
-    inputSchema: obj({ trackId: { type: 'string' } }, ['trackId']),
+    inputSchema: obj({
+      trackId: { type: 'string' },
+      force: { type: 'boolean', description: 'Re-analyze even if a cached result exists.' },
+    }, ['trackId']),
     handler: 'analyzeAudio',
   },
   {

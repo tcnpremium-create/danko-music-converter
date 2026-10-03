@@ -79,9 +79,11 @@ export class AppServiceCore implements DankoCore {
     const minD = a.minDurationSec != null ? Number(a.minDurationSec) : null;
     const maxD = a.maxDurationSec != null ? Number(a.maxDurationSec) : null;
     const limit = Math.min(500, Math.max(1, Number(a.limit ?? 50)));
+    const bpmMin = a.bpmMin != null ? Number(a.bpmMin) : null;
+    const bpmMax = a.bpmMax != null ? Number(a.bpmMax) : null;
     const warnings: string[] = [];
-    if (a.bpmMin != null || a.bpmMax != null) {
-      warnings.push('BPM filtering is not available yet (BPM is not computed); bpm filters were ignored.');
+    if ((bpmMin != null || bpmMax != null)) {
+      warnings.push('BPM filtering matches only tracks already analyzed (run analyze_audio to populate BPM).');
     }
 
     let rows = this.db.getAllTracks().filter((t) => {
@@ -95,6 +97,9 @@ export class AppServiceCore implements DankoCore {
       if (folder && !(t.sourcePath ?? '').toLowerCase().includes(folder)) return false;
       if (minD != null && t.durationSec < minD) return false;
       if (maxD != null && t.durationSec > maxD) return false;
+      // BPM filter: only tracks with a known (analyzed) BPM can match.
+      if (bpmMin != null && (m.bpm == null || m.bpm < bpmMin)) return false;
+      if (bpmMax != null && (m.bpm == null || m.bpm > bpmMax)) return false;
       return true;
     });
     const total = rows.length;
@@ -111,7 +116,7 @@ export class AppServiceCore implements DankoCore {
           genre: t.metadata.genre ?? null, year: t.metadata.year ?? null,
           format: t.sourceFormat, durationSec: t.durationSec,
           hasLocalFile: !!t.sourcePath && existsSync(t.sourcePath),
-          bpm: null, key: null,
+          bpm: t.metadata.bpm ?? null, key: t.metadata.key ?? null, camelot: t.metadata.camelot ?? null,
         })),
       },
     };
@@ -129,7 +134,7 @@ export class AppServiceCore implements DankoCore {
         composer: m.composer ?? null, isrc: m.isrc ?? null, comment: m.comment ?? null,
         durationSec: t.durationSec, format: t.sourceFormat, provider: t.provider,
         estimatedBytes: t.estimatedBytes, hasLocalFile: !!t.sourcePath && existsSync(t.sourcePath),
-        bpm: null, key: null,
+        bpm: m.bpm ?? null, key: m.key ?? null, camelot: m.camelot ?? null,
       },
     };
   }
@@ -144,9 +149,10 @@ export class AppServiceCore implements DankoCore {
       const parsed = await parseFile(t.sourcePath, { duration: true });
       const f = parsed.format;
       const size = statSync(t.sourcePath).size;
+      // Real DSP analysis (cached in the DB). Null only if it genuinely fails.
+      const analysis = this.svc.analyzeTrack(String(a.trackId ?? ''), { force: a.force === true });
       return {
         ok: true,
-        warnings: ['BPM, musical key and loudness analysis are not computed yet; reported as null (never invented).'],
         data: {
           id: t.id,
           durationSec: f.duration ?? t.durationSec,
@@ -157,7 +163,11 @@ export class AppServiceCore implements DankoCore {
           channels: f.numberOfChannels ?? null,
           lossless: f.lossless ?? null,
           sizeBytes: size,
-          bpm: null, key: null, loudnessLufs: null,
+          bpm: analysis?.bpm ?? null,
+          key: analysis?.key ?? null,
+          camelot: analysis?.camelot ?? null,
+          loudnessDb: analysis?.loudnessDb ?? null,
+          analysisCached: analysis?.cached ?? false,
         },
       };
     } catch (e) {

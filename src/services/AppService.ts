@@ -9,6 +9,16 @@ import type {
   InterruptedQueueInfo, DuplicatePolicy, TrackMetadataPatch, LibraryItem, MatchRow, DashboardSummary,
 } from '../types/index.js';
 import { bestMatch, type MatchFields } from '../matching/matching.js';
+import { analyzePcmMono } from '../analysis/analysis.js';
+import { decodeToMonoPcm } from '../analysis/decode.js';
+
+export interface AudioAnalysis {
+  bpm: number | null;
+  key: string | null;
+  camelot: string | null;
+  loudnessDb?: number | null;
+  cached: boolean;
+}
 import { DEFAULT_SETTINGS } from '../types/index.js';
 import { Database } from '../database/Database.js';
 import { ProviderRegistry } from '../providers/registry.js';
@@ -391,6 +401,39 @@ export class AppService {
   /** Devuelve una ruta local reproducible, validada, o null si no existe. */
   getPlayablePath(path: string): string | null {
     return path && existsSync(path) ? path : null;
+  }
+
+  // -- Análisis musical (BPM / tonalidad / Camelot) ---------------------------
+
+  /**
+   * Analiza una pista real (decodifica con FFmpeg y ejecuta DSP) y cachea el
+   * resultado en la BD. Si ya está cacheado y no se fuerza, lo reutiliza.
+   * Nunca inventa valores: si no hay archivo local, devuelve null.
+   */
+  analyzeTrack(trackId: string, opts: { force?: boolean } = {}): AudioAnalysis | null {
+    const t = this.db.getTrack(trackId);
+    if (!t) return null;
+    if (!opts.force && t.metadata.bpm != null) {
+      return { bpm: t.metadata.bpm, key: t.metadata.key ?? null, camelot: t.metadata.camelot ?? null, cached: true };
+    }
+    if (!t.sourcePath || !existsSync(t.sourcePath)) return null;
+    const decoded = decodeToMonoPcm(t.sourcePath);
+    if (!decoded) return null;
+    const r = analyzePcmMono(decoded.pcm, decoded.sampleRate);
+    this.db.setTrackAnalysis(trackId, { bpm: r.bpm, key: r.key, camelot: r.camelot });
+    this.db.persist();
+    return { bpm: r.bpm, key: r.key, camelot: r.camelot, loudnessDb: r.loudnessDb, cached: false };
+  }
+
+  /** Analiza en lote; devuelve cuántas se analizaron realmente (no cacheadas). */
+  batchAnalyzeTracks(trackIds: string[], opts: { force?: boolean } = {}): { analyzed: number; skipped: number } {
+    let analyzed = 0; let skipped = 0;
+    for (const id of trackIds) {
+      const before = this.db.getTrack(id)?.metadata.bpm;
+      const res = this.analyzeTrack(id, opts);
+      if (res && (opts.force || before == null)) analyzed++; else skipped++;
+    }
+    return { analyzed, skipped };
   }
 
   // -- Cola -------------------------------------------------------------------

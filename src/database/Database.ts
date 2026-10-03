@@ -165,9 +165,11 @@ export class Database {
     this.run(
       `INSERT OR REPLACE INTO tracks
        (id,playlistId,position,title,artist,album,albumArtist,genre,year,trackNumber,discNumber,
-        comment,composer,isrc,artworkPath,durationSec,sourceFormat,sourcePath,provider,estimatedBytes,dupHash)
+        comment,composer,isrc,artworkPath,durationSec,sourceFormat,sourcePath,provider,estimatedBytes,dupHash,
+        bpm,musicalKey,camelot)
        VALUES (:id,:playlistId,:position,:title,:artist,:album,:albumArtist,:genre,:year,:trackNumber,
-        :discNumber,:comment,:composer,:isrc,:artworkPath,:durationSec,:sourceFormat,:sourcePath,:provider,:estimatedBytes,:dupHash)`,
+        :discNumber,:comment,:composer,:isrc,:artworkPath,:durationSec,:sourceFormat,:sourcePath,:provider,:estimatedBytes,:dupHash,
+        :bpm,:musicalKey,:camelot)`,
       {
         id: t.id, playlistId: t.playlistId, position: t.position,
         title: t.metadata.title, artist: t.metadata.artist, album: t.metadata.album,
@@ -178,6 +180,7 @@ export class Database {
         artworkPath: t.metadata.artworkPath ?? null, durationSec: t.durationSec,
         sourceFormat: t.sourceFormat, sourcePath: t.sourcePath ?? null, provider: t.provider,
         estimatedBytes: t.estimatedBytes, dupHash,
+        bpm: t.metadata.bpm ?? null, musicalKey: t.metadata.key ?? null, camelot: t.metadata.camelot ?? null,
       },
     );
   }
@@ -236,6 +239,12 @@ export class Database {
     return this.getTrack(id);
   }
 
+  /** Persiste el análisis musical cacheado de una pista. */
+  setTrackAnalysis(id: string, a: { bpm: number | null; key: string | null; camelot: string | null }): void {
+    this.run('UPDATE tracks SET bpm=:bpm, musicalKey=:key, camelot=:camelot WHERE id=:id',
+      { id, bpm: a.bpm, key: a.key, camelot: a.camelot });
+  }
+
   /** ¿Existe ya otra pista con el mismo hash de duplicado? */
   countByDupHash(dupHash: string, excludeTrackId?: string): number {
     const r = this.all<{ n: number }>(
@@ -254,6 +263,8 @@ export class Database {
       discNumber: (r.discNumber as number) ?? undefined, comment: (r.comment as string) ?? undefined,
       composer: (r.composer as string) ?? undefined, isrc: (r.isrc as string) ?? undefined,
       artworkPath: (r.artworkPath as string) ?? undefined,
+      bpm: (r.bpm as number) ?? undefined, key: (r.musicalKey as string) ?? undefined,
+      camelot: (r.camelot as string) ?? undefined,
     },
     durationSec: r.durationSec as number, sourceFormat: r.sourceFormat as Track['sourceFormat'],
     sourcePath: (r.sourcePath as string) ?? undefined, provider: r.provider as Track['provider'],

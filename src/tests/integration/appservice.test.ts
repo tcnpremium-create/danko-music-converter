@@ -330,3 +330,55 @@ describe('AppService — contención de ruta de salida', () => {
     expect(statSync(outPath).size).toBeGreaterThan(0);
   }, 60000);
 });
+
+// ---------------------------------------------------------------------------
+// Análisis musical REAL (BPM/tonalidad/Camelot) de extremo a extremo:
+// genera un WAV metrónomo de BPM conocido, lo importa y lo analiza con FFmpeg.
+// ---------------------------------------------------------------------------
+function writeWavClick(path: string, bpm: number, seconds: number, sr = 22050): void {
+  const total = Math.floor(seconds * sr);
+  const period = Math.floor((60 / bpm) * sr);
+  const data = Buffer.alloc(total * 2);
+  for (let i = 0; i < total; i++) {
+    const phase = i % period;
+    // Transitorio con decaimiento en cada pulso.
+    const v = phase < 400 ? Math.exp(-phase / 40) * (phase % 2 ? 1 : -1) * 0.8 : 0;
+    data.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(v * 32767))), i * 2);
+  }
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(36 + data.length, 4); header.write('WAVE', 8);
+  header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22); header.writeUInt32LE(sr, 24); header.writeUInt32LE(sr * 2, 28);
+  header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+  header.write('data', 36); header.writeUInt32LE(data.length, 40);
+  writeFileSync(path, Buffer.concat([header, data]));
+}
+
+describe('AppService — análisis musical real (FFmpeg + DSP)', () => {
+  it('analiza un metrónomo de 120 BPM y cachea el resultado', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'danko-an-'));
+    const svc = await makeService(root);
+    const wav = join(root, 'metronome-120.wav');
+    writeWavClick(wav, 120, 10);
+    const { tracks } = await svc.importLocalFiles([wav]);
+    expect(tracks.length).toBe(1);
+
+    const a = svc.analyzeTrack(tracks[0].id)!;
+    expect(a).not.toBeNull();
+    expect(a.cached).toBe(false);
+    expect(a.bpm).not.toBeNull();
+    // Tolerancia por decodificado/resampleo; no debe inventar.
+    expect(a.bpm!).toBeGreaterThan(112);
+    expect(a.bpm!).toBeLessThan(128);
+    expect(a.camelot === null || /^(1[0-2]|[1-9])[AB]$/.test(a.camelot!)).toBe(true);
+
+    // Segunda llamada → caché.
+    const b = svc.analyzeTrack(tracks[0].id)!;
+    expect(b.cached).toBe(true);
+    expect(b.bpm).toBe(a.bpm);
+
+    // Persistido en metadata y filtrable por BPM.
+    const reread = svc.getTracks(tracks[0].playlistId)[0];
+    expect(reread.metadata.bpm).toBe(a.bpm);
+  }, 60000);
+});

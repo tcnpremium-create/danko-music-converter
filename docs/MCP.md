@@ -23,7 +23,7 @@ MCP-compatible client. The server connects to the **real** Danko core (library
 | --- | --- | --- |
 | `search_library` | read | Search tracks (query/artist/title/genre/year/format/folder/duration; bpm filter when known) |
 | `get_track_metadata` | read | Stored metadata + technical fields |
-| `analyze_audio` | read | Duration, container, codec, bitrate, sample rate, channels, size (BPM/key = null until computed) |
+| `analyze_audio` | read | Duration, container, codec, bitrate, sample rate, channels, size, **BPM + musical key + Camelot** (real DSP, cached) |
 | `convert_audio` | action | Real FFmpeg conversion to a format/preset (writes new files) |
 | `get_conversion_history` | read | Real conversion history |
 | `list_presets` | read | DJ presets: MP3 320, High Quality, WAV, DJ WAV, FLAC, Streaming AAC |

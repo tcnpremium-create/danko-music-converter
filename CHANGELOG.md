@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Real music analysis**: BPM (onset-flux autocorrelation), musical key
+  (chromagram + Krumhansl-Schmuckler) and Camelot code, computed via FFmpeg
+  decode + DSP and cached in SQLite (migration v3). Wired into `analyze_audio`,
+  `search_library` (real BPM range filter) and `get_track_metadata`. Values are
+  never invented: unknown fields are `null`.
+- Output-path containment and MCP HTTP hardening (413, request-error handling).
 - Real, core-connected MCP server (`src/mcp/`) exposing scoped audio/library tools (stdio + Streamable HTTP /mcp),
   ready for Claude and ChatGPT clients. Destructive operations require
   confirmation; no generic system access.
