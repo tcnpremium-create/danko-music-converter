@@ -14,7 +14,7 @@
 - [ ] `npm run typecheck` passes
 - [ ] `npm test` passes
 - [ ] `npm run build` passes
-- [ ] `node mcp/scripts/smoke.mjs` passes (if MCP touched)
+- [ ] MCP integration tests pass (`npm test` covers `src/tests/integration/mcp.test.ts`)
 - [ ] No secrets or real `.env` committed
 - [ ] Docs updated if behavior changed
 

@@ -225,6 +225,17 @@ export class Database {
     ).map(this.rowToTrack);
   }
 
+  /** Todas las pistas de la biblioteca (para búsqueda del MCP). */
+  getAllTracks(): Track[] {
+    return this.all<Record<string, unknown>>(
+      'SELECT * FROM tracks ORDER BY artist, title',
+    ).map(this.rowToTrack);
+  }
+
+  getTrackById(id: string): Track | null {
+    return this.getTrack(id);
+  }
+
   /** ¿Existe ya otra pista con el mismo hash de duplicado? */
   countByDupHash(dupHash: string, excludeTrackId?: string): number {
     const r = this.all<{ n: number }>(

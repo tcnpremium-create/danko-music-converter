@@ -58,11 +58,11 @@ functional with the MCP layer absent.
 - The renderer only sees a typed `window.danko` surface — no `ipcRenderer`,
   no Node. External navigation and `webview` attachment are blocked; strict CSP.
 
-### 6. AI / MCP Layer — `mcp/` (optional, isolated)
+### 6. AI / MCP Layer — `src/mcp/` (optional, isolated)
 - A **separate** Node process that talks to the same core through a narrow,
   typed service API — **never** a shell or filesystem passthrough.
 - Standard MCP so one server serves multiple clients (Claude, ChatGPT).
-- See [`mcp/README.md`](./mcp/README.md) for the tool catalog and safety model.
+- See [`docs/MCP.md`](./docs/MCP.md) for the tool catalog and safety model.
 
 ## Data flow: a conversion
 

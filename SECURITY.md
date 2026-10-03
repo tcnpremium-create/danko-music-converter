@@ -11,7 +11,7 @@ your machine; the app works fully offline for all local features.
   optional Spotify *metadata-only* import uses desktop OAuth with **PKCE**
   (public Client ID, **no client secret**). Any token obtained is stored
   encrypted via the OS keychain (Electron `safeStorage`) outside the repo.
-- **Scoped automation.** The optional MCP server (see `mcp/`) exposes only
+- **Scoped automation.** The optional MCP server (see `src/mcp/`) exposes only
   audio/library tools. It is **not** a generic gateway to the computer: there
   is no "run arbitrary command", "read any file", or "delete any folder" tool,
   and destructive operations require explicit confirmation.

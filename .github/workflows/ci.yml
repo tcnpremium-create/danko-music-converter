@@ -25,7 +25,5 @@ jobs:
         run: npm run typecheck
       - name: Tests
         run: npm test
-      - name: Build (main + preload + renderer)
+      - name: Build (main + preload + renderer + MCP)
         run: npm run build
-      - name: MCP server smoke
-        run: node mcp/scripts/smoke.mjs

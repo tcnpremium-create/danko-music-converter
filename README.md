@@ -98,18 +98,30 @@ See [INSTALLATION.md](./INSTALLATION.md) and [USER_GUIDE.md](./USER_GUIDE.md).
 
 ## 🤖 MCP · ChatGPT · Claude
 
-The optional MCP server (`mcp/`) speaks the standard
-[Model Context Protocol](https://modelcontextprotocol.io), so one server can
-serve multiple compatible clients (Claude, ChatGPT via the Apps SDK, etc.).
+The MCP server (`src/mcp/`) is **connected to the real core** (library + FFmpeg)
+and speaks the standard [Model Context Protocol](https://modelcontextprotocol.io)
+over **two transports from one toolset**: `stdio` (Claude, local dev) and
+**Streamable HTTP** at `/mcp` (remote clients such as ChatGPT), with bearer auth
+and a `/health` check.
 
-Example tools: `search_library`, `get_track_metadata`, `analyze_audio`,
-`convert_audio`, `create_preset`, `get_conversion_history`, `organize_files`,
-`generate_report`.
+Real tools: `search_library`, `get_track_metadata`, `analyze_audio`,
+`convert_audio`, `get_conversion_history`, `list_presets`, `generate_report`,
+`update_metadata`, `delete_tracks`.
 
-**Safety by design:** the MCP server is *not* a shell. There is no arbitrary
-command/file/delete tool, tools are scoped to Danko features, and destructive
-operations (e.g. deleting tracks) require explicit confirmation. See
-[`mcp/README.md`](./mcp/README.md).
+```bash
+npm run build:mcp
+node dist/mcp/stdio.mjs                         # Claude / local
+DANKO_MCP_TOKEN=secret node dist/mcp/http.mjs   # remote: http://127.0.0.1:8787/mcp
+```
+
+**Local Bridge, local-first:** run the HTTP server on your machine (binds
+loopback) and expose it with a tunnel so your audio never leaves your computer —
+only authorized tool calls do.
+
+**Safety by design:** not a shell. No arbitrary command/file/delete tool; tools
+are scoped to Danko features; destructive/protected tools require `confirm:true`;
+`delete_tracks` removes library entries only, never files on disk. Full setup
+for Claude & ChatGPT: [`docs/MCP.md`](./docs/MCP.md) · deploy: [`docs/DEPLOY.md`](./docs/DEPLOY.md).
 
 ## 🛠️ Tech stack
 
@@ -121,8 +133,9 @@ Electron 44 · React 19 · TypeScript 5 · Vite · Vitest · FFmpeg (`ffmpeg-sta
 ```bash
 npm run typecheck   # TypeScript
 npm test            # unit + integration (Vitest)
-npm run build       # main + preload + renderer
+npm run build       # main + preload + renderer + MCP bundles
 npm run e2e         # headless Electron smoke
+npm run mcp:http    # run the Streamable HTTP MCP server
 npm run dist:win    # Windows installer (NSIS) — on Windows/CI
 ```
 

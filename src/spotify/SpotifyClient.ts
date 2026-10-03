@@ -4,9 +4,19 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { safeStorage } from 'electron';
 import { URL } from 'node:url';
-import { shell } from 'electron';
+import { createRequire } from 'node:module';
+
+// Electron is loaded lazily so this module also runs under plain Node (e.g. the
+// MCP server / Local Bridge), where Electron APIs are simply unavailable.
+const requireCjs = createRequire(import.meta.url);
+interface ElectronLike {
+  safeStorage?: { isEncryptionAvailable(): boolean; encryptString(s: string): Buffer; decryptString(b: Buffer): string };
+  shell?: { openExternal(url: string): Promise<void> };
+}
+function electronModule(): ElectronLike | null {
+  try { return requireCjs('electron') as ElectronLike; } catch { return null; }
+}
 
 const API = 'https://api.spotify.com/v1';
 const TOKEN = 'https://accounts.spotify.com/api/token';
@@ -52,8 +62,9 @@ export class SpotifyClient {
 
   constructor(private readonly clientId: string, private readonly tokenPath: string) {
     try {
-      if (existsSync(tokenPath) && safeStorage.isEncryptionAvailable()) {
-        this.refreshToken = safeStorage.decryptString(readFileSync(tokenPath));
+      const el = electronModule();
+      if (existsSync(tokenPath) && el?.safeStorage?.isEncryptionAvailable()) {
+        this.refreshToken = el.safeStorage.decryptString(readFileSync(tokenPath));
       }
     } catch { this.refreshToken = null; }
 
@@ -95,7 +106,7 @@ export class SpotifyClient {
           code_challenge: challenge,
           state,
         }).toString();
-        void shell.openExternal(auth.toString());
+        void electronModule()?.shell?.openExternal(auth.toString());
       });
     });
 
@@ -117,8 +128,9 @@ export class SpotifyClient {
 
   private persistRefreshToken(): void {
     try {
-      if (this.refreshToken && safeStorage.isEncryptionAvailable()) {
-        writeFileSync(this.tokenPath, safeStorage.encryptString(this.refreshToken), { mode: 0o600 });
+      const el = electronModule();
+      if (this.refreshToken && el?.safeStorage?.isEncryptionAvailable()) {
+        writeFileSync(this.tokenPath, el.safeStorage.encryptString(this.refreshToken), { mode: 0o600 });
       }
     } catch { /* se vuelve a autorizar en la próxima sesión */ }
   }

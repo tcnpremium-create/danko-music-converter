@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Isolated MCP server skeleton (`mcp/`) exposing scoped audio/library tools,
+- Real, core-connected MCP server (`src/mcp/`) exposing scoped audio/library tools (stdio + Streamable HTTP /mcp),
   ready for Claude and ChatGPT clients. Destructive operations require
   confirmation; no generic system access.
 - `ARCHITECTURE.md` describing the Core Audio / Metadata / Library / AI-MCP

@@ -1,0 +1,15 @@
+# Render.com deployment for the Danko Music Converter MCP HTTP server.
+# Free web service with managed HTTPS. Set DANKO_MCP_TOKEN as a secret in the
+# dashboard before first deploy. This config belongs to THIS project only.
+services:
+  - type: web
+    name: danko-music-converter-mcp
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DANKO_MCP_HOST
+        value: 0.0.0.0
+      - key: DANKO_MCP_TOKEN
+        sync: false   # set this secret in the Render dashboard
