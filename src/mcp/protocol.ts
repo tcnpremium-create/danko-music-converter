@@ -4,6 +4,7 @@
 // safety model for every client (Claude, ChatGPT, …).
 // ============================================================================
 import { TOOLS, TOOLS_BY_NAME } from './tools.js';
+import { RESOURCES, RESOURCES_BY_URI, PROMPTS, PROMPTS_BY_NAME } from './resources.js';
 import type { DankoCore } from './core.js';
 
 export const PROTOCOL_VERSION = '2025-06-18';
@@ -29,8 +30,32 @@ export class McpHandler {
         description: t.description,
         inputSchema: t.inputSchema,
         annotations: { readOnlyHint: !!t.readOnly, destructiveHint: !!t.destructive },
+        ...(t.uiTemplate ? { _meta: { 'openai/outputTemplate': t.uiTemplate } } : {}),
       })),
     };
+  }
+
+  private listResources() {
+    return { resources: RESOURCES.map(({ uri, name, description, mimeType }) => ({ uri, name, description, mimeType })) };
+  }
+
+  private readResource(params: Record<string, unknown> | undefined) {
+    const uri = String(params?.uri ?? '');
+    const r = RESOURCES_BY_URI[uri];
+    if (!r) return { error: { code: -32602, message: `Unknown resource: ${uri}` } };
+    return { result: { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] } };
+  }
+
+  private listPrompts() {
+    return { prompts: PROMPTS.map(({ name, title, description, arguments: args }) => ({ name, title, description, arguments: args ?? [] })) };
+  }
+
+  private getPrompt(params: Record<string, unknown> | undefined) {
+    const name = String(params?.name ?? '');
+    const p = PROMPTS_BY_NAME[name];
+    if (!p) return { error: { code: -32602, message: `Unknown prompt: ${name}` } };
+    const args = (params?.arguments ?? {}) as Record<string, string>;
+    return { result: { description: p.description, messages: [{ role: 'user', content: { type: 'text', text: p.render(args) } }] } };
   }
 
   private async callTool(params: Record<string, unknown> | undefined) {
@@ -77,7 +102,11 @@ export class McpHandler {
       case 'initialize':
         return reply({ result: {
           protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: { listChanged: false } },
+          capabilities: {
+            tools: { listChanged: false },
+            resources: { listChanged: false, subscribe: false },
+            prompts: { listChanged: false },
+          },
           serverInfo: SERVER_INFO,
           instructions: 'Danko Music Converter MCP. Scoped audio/library tools only; destructive tools need confirm:true.',
         } });
@@ -91,6 +120,14 @@ export class McpHandler {
         const out = await this.callTool(params);
         return reply(out);
       }
+      case 'resources/list':
+        return reply({ result: this.listResources() });
+      case 'resources/read':
+        return reply(this.readResource(params));
+      case 'prompts/list':
+        return reply({ result: this.listPrompts() });
+      case 'prompts/get':
+        return reply(this.getPrompt(params));
       default:
         if (id === undefined) return null;
         return reply({ error: { code: -32601, message: `Method not found: ${method}` } });

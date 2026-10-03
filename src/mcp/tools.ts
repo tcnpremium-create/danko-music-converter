@@ -16,6 +16,8 @@ export interface ToolDef {
   description: string;
   readOnly?: boolean;
   destructive?: boolean;
+  /** Optional MCP Apps UI template URI (OpenAI Apps SDK `openai/outputTemplate`). */
+  uiTemplate?: string;
   inputSchema: Record<string, unknown>;
   /** Method name on DankoCore. */
   handler:
@@ -37,6 +39,7 @@ export const TOOLS: ToolDef[] = [
       'artist, title, genre, year, format, folder, min/max duration (seconds), and bpm range ' +
       '(bpm filtering applies only to tracks whose BPM is already known).',
     readOnly: true,
+    uiTemplate: 'ui://danko/results',
     inputSchema: obj({
       query: { type: 'string' },
       artist: { type: 'string' },

@@ -100,6 +100,29 @@ describe('MCP protocol — real core', () => {
     core.close();
   });
 
+  it('exposes resources (MCP Apps UI) and prompts for connectors', async () => {
+    const { core } = await makeCore();
+    const h = new McpHandler(core);
+    const init: any = await h.handle({ jsonrpc: '2.0', id: 20, method: 'initialize', params: {} });
+    expect(init.result.capabilities.resources).toBeTruthy();
+    expect(init.result.capabilities.prompts).toBeTruthy();
+
+    const list: any = await h.handle({ jsonrpc: '2.0', id: 21, method: 'tools/list' });
+    const search = list.result.tools.find((t: any) => t.name === 'search_library');
+    expect(search._meta['openai/outputTemplate']).toBe('ui://danko/results');
+
+    const res: any = await h.handle({ jsonrpc: '2.0', id: 22, method: 'resources/list' });
+    expect(res.result.resources.some((r: any) => r.uri === 'ui://danko/results')).toBe(true);
+    const read: any = await h.handle({ jsonrpc: '2.0', id: 23, method: 'resources/read', params: { uri: 'ui://danko/results' } });
+    expect(read.result.contents[0].text).toContain('DANKO MUSIC');
+
+    const prompts: any = await h.handle({ jsonrpc: '2.0', id: 24, method: 'prompts/list' });
+    expect(prompts.result.prompts.length).toBeGreaterThanOrEqual(3);
+    const got: any = await h.handle({ jsonrpc: '2.0', id: 25, method: 'prompts/get', params: { name: 'find_tracks', arguments: { style: 'Makina', decade: '90s', bpm: '168-174' } } });
+    expect(got.result.messages[0].content.text).toContain('Makina');
+    core.close();
+  });
+
   it('generate_report and list_presets return real data', async () => {
     const { core } = await makeCore();
     const h = new McpHandler(core);
