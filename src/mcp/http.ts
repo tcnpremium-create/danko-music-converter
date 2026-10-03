@@ -55,9 +55,21 @@ export function createMcpHttpServer(core: DankoCore, token: string | null): http
     }
     if (req.method !== 'POST') return send(405, { error: 'method not allowed' }, { Allow: 'POST' });
 
+    const MAX_BODY = 5_000_000;
     let body = '';
-    req.on('data', (c) => { body += c; if (body.length > 5_000_000) req.destroy(); });
+    let tooLarge = false;
+    req.on('error', () => { /* client aborted; nothing to respond to */ });
+    req.on('data', (c) => {
+      if (tooLarge) return;
+      body += c;
+      if (body.length > MAX_BODY) {
+        tooLarge = true;
+        send(413, { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Payload too large' } });
+        req.destroy();
+      }
+    });
     req.on('end', async () => {
+      if (tooLarge) return;
       let parsed: JsonRpcMessage | JsonRpcMessage[];
       try { parsed = JSON.parse(body); } catch {
         return send(400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } });

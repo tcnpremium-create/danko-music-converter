@@ -163,4 +163,24 @@ describe('MCP Streamable HTTP transport', () => {
     await new Promise<void>((r) => server.close(() => r()));
     core.close();
   });
+
+  it('handles edge cases: GET /mcp → 405, unknown method → -32601, unknown resource → error', async () => {
+    const { core } = await makeCore();
+    const server = createMcpHttpServer(core, null); // no auth for this probe
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const port = (server.address() as AddressInfo).port;
+    const base = `http://127.0.0.1:${port}`;
+
+    const get = await fetch(`${base}/mcp`);
+    expect(get.status).toBe(405);
+
+    const unknown = await fetch(`${base}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'does/not/exist' }) });
+    expect((await unknown.json()).error.code).toBe(-32601);
+
+    const badRes = await fetch(`${base}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'ui://nope' } }) });
+    expect((await badRes.json()).error).toBeTruthy();
+
+    await new Promise<void>((r) => server.close(() => r()));
+    core.close();
+  });
 });

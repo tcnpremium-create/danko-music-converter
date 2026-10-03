@@ -2,8 +2,8 @@
 // edición de metadatos, encolar pista individual, eliminar y biblioteca.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { mkdtempSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
+import { mkdtempSync, existsSync, readdirSync, writeFileSync, statSync } from 'node:fs';
 import { initSqlRuntime, Database } from '../../database/Database.js';
 import { AppService, type AppPaths } from '../../services/AppService.js';
 
@@ -296,4 +296,37 @@ describe('AppService — flujo de una sola canción', () => {
     const d2 = drained(svc); svc.retryJob(job.id); svc.startQueue(); await d2;
     expect(svc.queue.getJobs().find((j) => j.id === job.id)!.status).toBe('COMPLETADO');
   });
+});
+
+// ---------------------------------------------------------------------------
+// Seguridad: la salida de conversión nunca escapa de outputDir, ni con
+// metadatos maliciosos ni con una plantilla que intente subir de directorio.
+// ---------------------------------------------------------------------------
+describe('AppService — contención de ruta de salida', () => {
+  it('metadatos con ../ y plantilla con carpetas no escapan de outputDir', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'danko-sec-'));
+    const svc = await makeService(root);
+    const outDir = join(root, 'out');
+    svc.updateSettings({
+      queue: { concurrency: 2, maxAttempts: 1, timeoutSec: 30, backoffBaseMs: 5, priority: 'normal' },
+      conversion: {
+        outputFormat: 'mp3', mp3Bitrate: 128, sampleRate: 0, outputDir: outDir,
+        namingTemplate: '{artist}/{title}', embedArtwork: false, writeMetadata: false, duplicatePolicy: 'SOBRESCRIBIR',
+      },
+    });
+    const { tracks } = svc.importDemoPlaylist(1);
+    svc.updateTrackMetadata(tracks[0].id, { artist: '../../../../etc', title: '../../escape' });
+    svc.enqueueTrack(tracks[0].id);
+    const d = drained(svc); svc.startQueue(); await d;
+
+    const job = svc.queue.getJobs()[0];
+    expect(job.status).toBe('COMPLETADO');
+    const outPath = job.outputPath!;
+    expect(existsSync(outPath)).toBe(true);
+    // El archivo DEBE estar dentro de outDir.
+    const base = resolve(outDir);
+    const resolved = resolve(outPath);
+    expect(resolved === base || resolved.startsWith(base + sep)).toBe(true);
+    expect(statSync(outPath).size).toBeGreaterThan(0);
+  }, 60000);
 });

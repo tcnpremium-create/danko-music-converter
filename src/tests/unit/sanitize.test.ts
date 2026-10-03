@@ -40,4 +40,32 @@ describe('applyNamingTemplate', () => {
     const out = applyNamingTemplate('{artist} - {title}', { artist: '', title: 'Solo' });
     expect(out).toBe('Solo');
   });
+
+  // --- Seguridad: path traversal -------------------------------------------
+  it('neutraliza separadores dentro de un valor de token (no crea carpetas)', () => {
+    const out = applyNamingTemplate('{title}', { title: '../../../../etc/passwd' });
+    // Un único segmento, sin separadores → no puede transitar directorios.
+    expect(out.includes('/')).toBe(false);
+    expect(out.includes('\\')).toBe(false);
+    expect(out).not.toContain('etc/passwd');
+    expect(out.split('/').length).toBe(1);
+  });
+
+  it('un segmento "../" de la plantilla no permite subir de directorio', () => {
+    const out = applyNamingTemplate('../../{title}', { title: 'x' });
+    // Los segmentos ".." se neutralizan a un nombre seguro, nunca ".."
+    expect(out.split('/').every((s) => s !== '..' && s !== '.')).toBe(true);
+    expect(out.endsWith('/x')).toBe(true);
+  });
+
+  it('rutas absolutas en el valor no escapan', () => {
+    const out = applyNamingTemplate('{title}', { title: '/etc/cron.d/evil' });
+    expect(out.startsWith('/')).toBe(false);
+    expect(out.includes('/')).toBe(false);
+  });
+
+  it('sanitizeSegment convierte ".." en un nombre no transitable', () => {
+    expect(sanitizeSegment('..')).not.toBe('..');
+    expect(sanitizeSegment('.')).not.toBe('.');
+  });
 });

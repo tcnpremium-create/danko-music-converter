@@ -3,7 +3,7 @@
 // conversión. Expone operaciones de alto nivel que la capa IPC invoca.
 // ============================================================================
 import { existsSync, mkdirSync, statSync, readdirSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve, sep } from 'node:path';
 import type {
   AppSettings, Job, Playlist, Track, HistoryEntry, OutputFormat,
   InterruptedQueueInfo, DuplicatePolicy, TrackMetadataPatch, LibraryItem, MatchRow, DashboardSummary,
@@ -16,7 +16,7 @@ import { trackDupHash, buildDemoPlaylist } from '../providers/DemoProvider.js';
 import { QueueEngine, type JobProcessor, type JobContext } from '../queue/QueueEngine.js';
 import { convert } from '../converter/ffmpeg.js';
 import { readAudioFile, formatFromPath } from '../metadata/reader.js';
-import { applyNamingTemplate } from '../utils/sanitize.js';
+import { applyNamingTemplate, sanitizeSegment } from '../utils/sanitize.js';
 import { withTimeout } from '../utils/retry.js';
 import { SpotifyClient } from '../spotify/SpotifyClient.js';
 import { uuid } from '../utils/id.js';
@@ -602,6 +602,19 @@ export class AppService {
       genre: track.metadata.genre,
     });
     let outputPath = join(this.settings.conversion.outputDir, rel + ext);
+
+    // Defensa en profundidad: la ruta de salida NUNCA debe escapar de outputDir
+    // (aunque la plantilla o los metadatos intenten ../ o rutas absolutas). Si
+    // la ruta resuelta no está contenida, se usa un nombre seguro plano dentro
+    // de outputDir.
+    const baseResolved = resolve(this.settings.conversion.outputDir);
+    const resolved = resolve(outputPath);
+    if (resolved !== baseResolved && !resolved.startsWith(baseResolved + sep)) {
+      outputPath = join(
+        this.settings.conversion.outputDir,
+        sanitizeSegment(track.metadata.title ?? '', 'pista') + ext,
+      );
+    }
 
     const policy: DuplicatePolicy = this.settings.conversion.duplicatePolicy;
     if (existsSync(outputPath)) {
