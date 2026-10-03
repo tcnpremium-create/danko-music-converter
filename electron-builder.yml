@@ -1,0 +1,57 @@
+# Configuración de empaquetado. Genera el instalador NSIS de Windows (.exe)
+# con acceso directo y desinstalador. FFmpeg y el WASM de sql.js se copian
+# como recursos para que la app los encuentre en producción.
+appId: com.danko.musicconverter
+productName: Danko Music Converter
+copyright: © DANKO
+directories:
+  output: release
+  buildResources: build
+
+# Solo se empaqueta lo necesario (bundles + node_modules de runtime).
+files:
+  - dist/**/*
+  - package.json
+  - '!**/*.map'
+
+asar: true
+# ffmpeg-static y sql.js contienen binarios/wasm: se dejan desempaquetados.
+asarUnpack:
+  - node_modules/ffmpeg-static/**
+  - node_modules/sql.js/dist/**
+
+# El WASM de sql.js se copia en todas las plataformas.
+extraResources:
+  - from: node_modules/sql.js/dist/sql-wasm.wasm
+    to: sql-wasm/sql-wasm.wasm
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-Setup.${ext}
+  # ffmpeg.exe para Windows (lo rellena scripts/fetch-ffmpeg-win.mjs antes del build).
+  extraResources:
+    - from: resources/ffmpeg
+      to: ffmpeg
+      filter: ['**/*']
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Danko Music Converter
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+
+# Objetivo de validación en Linux/CI (app desempaquetada, sin instalador).
+# Objetivo de validación local en Linux (app desempaquetada, sin instalador).
+# Sin `icon` a propósito: el icono de la app es para Windows (build/icon.ico);
+# el procesado de icono de Linux no aporta al entregable y puede colgarse en
+# entornos headless.
+linux:
+  target: [dir]
+  category: AudioVideo

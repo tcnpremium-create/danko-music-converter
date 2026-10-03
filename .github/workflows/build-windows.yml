@@ -1,0 +1,72 @@
+name: Build Windows Installer
+
+# Builds the Windows NSIS installer on a Windows runner.
+# - push to main / PR: validate + build + upload the .exe artifact.
+# - tag vX.Y.Z: also publish a GitHub Release with the installer attached.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build (main + preload + renderer)
+        run: npm run build
+      - name: Download FFmpeg for Windows
+        run: npm run fetch:ffmpeg-win
+      - name: Package installer (NSIS)
+        run: npx electron-builder --win nsis --x64 --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Installer summary (name, size, SHA256)
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release/*Setup.exe | Select-Object -First 1
+          $sha = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          $mb = [math]::Round($exe.Length / 1MB, 2)
+          "### Installer" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "| Field | Value |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "| --- | --- |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "| File | $($exe.Name) |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "| Size | $mb MB ($($exe.Length) bytes) |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "| SHA256 | ``$sha`` |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          $sha | Out-File -FilePath "release/$($exe.Name).sha256.txt" -NoNewline
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: danko-music-converter-setup
+          path: |
+            release/*Setup.exe
+            release/*Setup.exe.sha256.txt
+          if-no-files-found: error
+      - name: Publish GitHub Release (tags v* only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*Setup.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

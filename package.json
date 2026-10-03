@@ -1,0 +1,64 @@
+{
+  "name": "danko-music-converter",
+  "productName": "Danko Music Converter",
+  "version": "1.0.0",
+  "description": "Professional, local-first music conversion & library app for DJs, producers and creators. FFmpeg-powered, MCP-ready.",
+  "author": "Danko",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcnpremium-create/danko-music-converter.git"
+  },
+  "homepage": "https://github.com/tcnpremium-create/danko-music-converter#readme",
+  "bugs": {
+    "url": "https://github.com/tcnpremium-create/danko-music-converter/issues"
+  },
+  "keywords": [
+    "audio",
+    "converter",
+    "ffmpeg",
+    "music",
+    "dj",
+    "electron",
+    "mcp"
+  ],
+  "main": "dist/main/main.mjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "gen:icons": "node scripts/gen-icons.mjs",
+    "build:main": "node scripts/build-main.mjs",
+    "build:renderer": "vite build",
+    "build": "npm run gen:icons && npm run build:main && npm run build:renderer",
+    "start": "electron .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "node scripts/e2e.mjs",
+    "fetch:ffmpeg-win": "node scripts/fetch-ffmpeg-win.mjs",
+    "dist:win": "npm run build && npm run fetch:ffmpeg-win && electron-builder --win nsis --x64",
+    "dist:dir": "npm run build && electron-builder --dir"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0",
+    "music-metadata": "^11.16.1",
+    "sql.js": "^1.14.2"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "png-to-ico": "^3.0.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

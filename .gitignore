@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+build/icon.ico
+build/icon.png
+
+# Bundled binaries fetched at build time (not committed)
+resources/ffmpeg/
+
+# Local environment & secrets (never commit real values)
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
