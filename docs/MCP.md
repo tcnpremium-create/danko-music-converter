@@ -77,17 +77,31 @@ ChatGPT connects to a **remote** MCP over HTTPS. Two supported paths:
    cloudflared tunnel --url http://127.0.0.1:8787        # -> https://<sub>.trycloudflare.com
    ```
 
-   In ChatGPT (Settings → Connectors → add MCP server), use:
-   - URL: `https://<your-tunnel-host>/mcp`
-   - Auth: Bearer token = your `DANKO_MCP_TOKEN`
+   Set `DANKO_MCP_PUBLIC_URL` to the tunnel's HTTPS origin to enable OAuth.
+   Add a custom MCP server in ChatGPT with URL `https://<your-tunnel-host>/mcp`
+   and OAuth authentication. Leave client credentials blank to use dynamic
+   registration. The owner authorizes on Danko's consent page using their
+   private access key, which is never sent to ChatGPT as its access token.
 
 2. **Hosted instance.** Deploy the Docker image (see [DEPLOY.md](./DEPLOY.md))
    for a public HTTPS `/mcp`. Point it at a library the server can read.
 
-> The exact UI to add a connector/app in ChatGPT is controlled by OpenAI and may
-> require enabling developer/connector features on your account. The server side
-> (endpoint, transport, auth) is fully prepared; adding it in ChatGPT is the one
-> manual step.
+OAuth is enabled when `DANKO_MCP_PUBLIC_URL` (or Render's `RENDER_EXTERNAL_URL`)
+is set. It supports discovery, dynamic registration, PKCE S256, one-hour access
+tokens, rotating seven-day refresh tokens and revocation. Callbacks are limited
+to ChatGPT and Claude HTTPS domains. This is a **private single-library instance**:
+owner approval grants access to this server's library, not a separate library
+for each friend. Do not distribute the owner's access key.
+
+OAuth registration and grant state is encrypted in `oauth-state.enc`, beside the
+library DB. Authorization requests/codes expire and are kept in memory. Render's
+free ephemeral disk can lose state on redeploy: reconnect the app if necessary.
+A persistent disk is required for durable hosted libraries and authorizations.
+
+The hosted server cannot access a Windows user's local music automatically.
+Adding the custom app still requires signing into ChatGPT and approving the
+connection. Until an actual ChatGPT tool call succeeds, compatibility is only
+verified at the OAuth/MCP protocol level.
 
 ## Safety model
 

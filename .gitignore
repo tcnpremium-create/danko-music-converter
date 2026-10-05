@@ -19,6 +19,7 @@ resources/ffmpeg/
 *.key
 *.pfx
 *.p12
+oauth-state.enc*
 
 # Logs
 *.log

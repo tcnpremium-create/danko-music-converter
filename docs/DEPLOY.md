@@ -13,7 +13,8 @@ anywhere that gives you **HTTPS** and a `$PORT`.
 
 | Var | Purpose |
 | --- | --- |
-| `DANKO_MCP_TOKEN` | Bearer token required on `/mcp` (set as a secret) |
+| `DANKO_MCP_TOKEN` | Private owner key (at least 32 characters); also accepted for private API clients |
+| `DANKO_MCP_PUBLIC_URL` | HTTPS origin for OAuth; Render's `RENDER_EXTERNAL_URL` is used automatically |
 | `DANKO_MCP_HOST` | `0.0.0.0` for cloud platforms |
 | `PORT` | Port to bind (most platforms inject this) |
 | `DANKO_DB_PATH` | Library DB path (optional) |
@@ -48,7 +49,9 @@ DANKO_MCP_TOKEN=yourtoken node dist/mcp/http.mjs      # binds 127.0.0.1:8787
 cloudflared tunnel --url http://127.0.0.1:8787        # free HTTPS URL
 ```
 
-Use the tunnel's `https://…/mcp` URL + bearer token in ChatGPT/Claude.
+Set `DANKO_MCP_PUBLIC_URL` to the tunnel's HTTPS origin. Use the `/mcp` URL
+with OAuth in ChatGPT/Claude. Enter the owner key only on Danko's consent page.
+See [MCP.md](./MCP.md) for scopes, expiration and ephemeral-disk limitations.
 
 ## Notes
 

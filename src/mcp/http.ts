@@ -15,6 +15,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { McpHandler, type JsonRpcMessage } from './protocol.js';
 import { AppServiceCore, type DankoCore } from './core.js';
 import { defaultCoreOptions, httpConfig } from './config.js';
+import { createOAuthHttpServer } from './oauth.js';
+import { join, dirname } from 'node:path';
 
 /** Constant-time bearer check (hash both sides so lengths always match). */
 export function bearerMatches(header: string | undefined, token: string): boolean {
@@ -119,7 +121,11 @@ if (isMain || process.env.DANKO_MCP_HTTP_MAIN === '1') {
     process.exit(1);
   }
   AppServiceCore.open(defaultCoreOptions()).then((core) => {
-    const server = createMcpHttpServer(core, cfg.token);
+    const legacy = createMcpHttpServer(core, cfg.token);
+    const publicUrl = process.env.DANKO_MCP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+    const server = publicUrl && cfg.token
+      ? createOAuthHttpServer(legacy, cfg.token, new URL(publicUrl), join(dirname(defaultCoreOptions().dbPath), 'oauth-state.enc'))
+      : legacy;
     server.listen(cfg.port, cfg.host, () => {
       process.stderr.write(`[danko-mcp:http] listening on http://${cfg.host}:${cfg.port}/mcp (auth: ${cfg.token ? 'bearer' : 'off'})\n`);
     });

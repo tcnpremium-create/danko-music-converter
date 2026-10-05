@@ -30,6 +30,9 @@ export class McpHandler {
         description: t.description,
         inputSchema: t.inputSchema,
         annotations: { readOnlyHint: !!t.readOnly, destructiveHint: !!t.destructive },
+        ...((process.env.DANKO_MCP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL) ? {
+          securitySchemes: [{ type: 'oauth2', scopes: ['danko:tools'] }],
+        } : {}),
         ...(t.uiTemplate ? { _meta: { 'openai/outputTemplate': t.uiTemplate } } : {}),
       })),
     };
