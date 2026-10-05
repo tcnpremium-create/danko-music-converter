@@ -5,6 +5,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# The MCP server runs on plain Node: don't download the Electron binary.
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
+
 # Install only prod deps for a smaller image; dev deps (esbuild) are needed to
 # build the MCP bundle, so build in a first stage then prune.
 COPY package.json package-lock.json ./

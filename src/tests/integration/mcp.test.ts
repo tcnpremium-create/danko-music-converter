@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { initSqlRuntime } from '../../database/Database.js';
 import { AppServiceCore } from '../../mcp/core.js';
 import { McpHandler } from '../../mcp/protocol.js';
-import { createMcpHttpServer } from '../../mcp/http.js';
+import { createMcpHttpServer, authConfigError, bearerMatches } from '../../mcp/http.js';
 
 beforeAll(async () => { await initSqlRuntime(); });
 
@@ -182,5 +182,23 @@ describe('MCP Streamable HTTP transport', () => {
 
     await new Promise<void>((r) => server.close(() => r()));
     core.close();
+  });
+});
+
+describe('MCP HTTP auth policy (fail-closed)', () => {
+  it('refuses to run in production without a token, allows dev, honors explicit opt-out', () => {
+    expect(authConfigError(null, { NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toMatch(/DANKO_MCP_TOKEN/);
+    expect(authConfigError('abc', { NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toBeNull();
+    expect(authConfigError(null, {} as NodeJS.ProcessEnv)).toBeNull(); // local dev
+    expect(authConfigError(null, { NODE_ENV: 'production', DANKO_MCP_ALLOW_NO_AUTH: '1' } as NodeJS.ProcessEnv)).toBeNull();
+  });
+
+  it('bearerMatches accepts only the exact bearer and never throws on odd input', () => {
+    expect(bearerMatches('Bearer s3cret', 's3cret')).toBe(true);
+    expect(bearerMatches('Bearer s3cret ', 's3cret')).toBe(false);
+    expect(bearerMatches('bearer s3cret', 's3cret')).toBe(false);
+    expect(bearerMatches(undefined, 's3cret')).toBe(false);
+    expect(bearerMatches('', 's3cret')).toBe(false);
+    expect(bearerMatches('Bearer ' + 'x'.repeat(10000), 's3cret')).toBe(false);
   });
 });

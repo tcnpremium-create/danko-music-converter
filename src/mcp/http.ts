@@ -11,9 +11,29 @@
 // ============================================================================
 import http from 'node:http';
 import process from 'node:process';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { McpHandler, type JsonRpcMessage } from './protocol.js';
 import { AppServiceCore, type DankoCore } from './core.js';
 import { defaultCoreOptions, httpConfig } from './config.js';
+
+/** Constant-time bearer check (hash both sides so lengths always match). */
+export function bearerMatches(header: string | undefined, token: string): boolean {
+  const expected = createHash('sha256').update(`Bearer ${token}`).digest();
+  const actual = createHash('sha256').update(header ?? '').digest();
+  return timingSafeEqual(expected, actual);
+}
+
+/**
+ * Fail-closed policy: a production deployment must never run with auth off.
+ * Returns an error message when the configuration is unsafe, otherwise null.
+ */
+export function authConfigError(token: string | null, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (token) return null;
+  if (env.NODE_ENV === 'production' && env.DANKO_MCP_ALLOW_NO_AUTH !== '1') {
+    return 'DANKO_MCP_TOKEN is not set. Refusing to start the HTTP MCP server in production without authentication.';
+  }
+  return null;
+}
 
 export function createMcpHttpServer(core: DankoCore, token: string | null): http.Server {
   const handler = new McpHandler(core);
@@ -43,8 +63,8 @@ export function createMcpHttpServer(core: DankoCore, token: string | null): http
 
     // Auth (when a token is configured).
     if (token) {
-      const auth = req.headers['authorization'] || '';
-      if (auth !== `Bearer ${token}`) {
+      const auth = req.headers['authorization'];
+      if (!bearerMatches(typeof auth === 'string' ? auth : undefined, token)) {
         return send(401, { jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } });
       }
     }
@@ -93,6 +113,11 @@ export function createMcpHttpServer(core: DankoCore, token: string | null): http
 const isMain = !!process.argv[1] && /(?:^|\/)http\.(?:mjs|js)$/.test(process.argv[1]);
 if (isMain || process.env.DANKO_MCP_HTTP_MAIN === '1') {
   const cfg = httpConfig();
+  const authError = authConfigError(cfg.token);
+  if (authError) {
+    process.stderr.write('[danko-mcp:http] fatal: ' + authError + '\n');
+    process.exit(1);
+  }
   AppServiceCore.open(defaultCoreOptions()).then((core) => {
     const server = createMcpHttpServer(core, cfg.token);
     server.listen(cfg.port, cfg.host, () => {
