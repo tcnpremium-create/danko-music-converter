@@ -72,6 +72,14 @@ export function PlaylistsPage({ onGoQueue, onOpen }: { onGoQueue: () => void; on
     const path = await api.exportPlaylist(p.id);
     if (path) window.alert(`Playlist exportada:\n${path}`);
   };
+  const exportVirtualDj = async (p: Playlist) => {
+    setBusy(true);
+    try {
+      const result = await api.exportVirtualDj(p.id);
+      if (result) window.alert(`${result.exported} pistas exportadas a VirtualDJ.\n${result.path}${result.omitted.length ? '\n\nPistas omitidas:\n' + result.omitted.map(item => `${item.title}: ${item.reason}`).join('\n') : ''}\n\nLos archivos originales se conservan. La lista utiliza rutas locales de este ordenador.`);
+    } catch (error) { window.alert(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(false); }
+  };
 
   return (
     <div>
@@ -106,6 +114,7 @@ export function PlaylistsPage({ onGoQueue, onOpen }: { onGoQueue: () => void; on
                   <button className="btn sm ghost" disabled={busy} onClick={() => rename(p)}>✎ Renombrar</button>
                   <button className="btn sm ghost" disabled={busy} onClick={() => duplicate(p)}>⧉ Duplicar</button>
                   <button className="btn sm ghost" disabled={busy} onClick={() => exportM3U(p)}>⬇ Exportar</button>
+                  <button className="btn sm" disabled={busy} onClick={() => exportVirtualDj(p)}>Exportar a VirtualDJ</button>
                   <button className="btn sm ghost" disabled={busy} onClick={() => remove(p)}>🗑 Eliminar</button>
                 </div>
               </div>

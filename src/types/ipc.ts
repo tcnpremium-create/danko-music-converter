@@ -3,7 +3,7 @@
 // ============================================================================
 import type {
   AppSettings, Playlist, Track, Job, HistoryEntry, QueueSnapshot,
-  InterruptedQueueInfo, LibraryItem, TrackMetadataPatch, MatchRow, DashboardSummary,
+  InterruptedQueueInfo, LibraryItem, TrackMetadataPatch, MatchRow, DashboardSummary, DjExportResult,
 } from './index.js';
 
 export interface DankoApi {
@@ -33,6 +33,7 @@ export interface DankoApi {
   reorderTrack(trackId: string, dir: -1 | 1): Promise<void>;
   /** Exporta a M3U mediante diálogo de guardado; devuelve la ruta o null. */
   exportPlaylist(id: string): Promise<string | null>;
+  exportVirtualDj(id: string): Promise<DjExportResult | null>;
 
   // Pistas / biblioteca
   updateTrackMetadata(trackId: string, patch: TrackMetadataPatch): Promise<Track | null>;
@@ -94,6 +95,7 @@ export const IPC = {
   duplicatePlaylist: 'duplicatePlaylist',
   reorderTrack: 'reorderTrack',
   exportPlaylist: 'exportPlaylist',
+  exportVirtualDj: 'exportVirtualDj',
   updateTrackMetadata: 'updateTrackMetadata',
   removeTrack: 'removeTrack',
   getLibrary: 'getLibrary',

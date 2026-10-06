@@ -28,6 +28,7 @@ const api: DankoApi = {
   duplicatePlaylist: (id) => ipcRenderer.invoke(IPC.duplicatePlaylist, id),
   reorderTrack: (trackId, dir) => ipcRenderer.invoke(IPC.reorderTrack, trackId, dir),
   exportPlaylist: (id) => ipcRenderer.invoke(IPC.exportPlaylist, id),
+  exportVirtualDj: (id) => ipcRenderer.invoke(IPC.exportVirtualDj, id),
 
   updateTrackMetadata: (trackId, patch) => ipcRenderer.invoke(IPC.updateTrackMetadata, trackId, patch),
   removeTrack: (trackId) => ipcRenderer.invoke(IPC.removeTrack, trackId),

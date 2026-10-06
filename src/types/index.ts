@@ -68,6 +68,12 @@ export interface Playlist {
   createdAt: number;
 }
 
+export interface DjExportResult {
+  path: string;
+  exported: number;
+  omitted: { trackId: string; title: string; reason: string }[];
+}
+
 export interface Job {
   id: string;
   playlistId: string;

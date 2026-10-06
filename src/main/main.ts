@@ -9,6 +9,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { initSqlRuntime, Database } from '../database/Database.js';
 import { AppService } from '../services/AppService.js';
 import { killAllFfmpeg } from '../converter/ffmpeg.js';
+import { sanitizeSegment } from '../utils/sanitize.js';
 import { IPC } from '../types/ipc.js';
 import type { AppSettings, TrackMetadataPatch } from '../types/index.js';
 
@@ -214,6 +215,23 @@ function registerIpc(): void {
     if (res.canceled || !res.filePath) return null;
     writeFileSync(res.filePath, content, 'utf8');
     return res.filePath;
+  });
+  ipcMain.handle(IPC.exportVirtualDj, async (_e, id: string) => {
+    const result = service.prepareVirtualDjExport(id);
+    const playlist = service.getPlaylists().find(p => p.id === id)!;
+    const nativeFolder = process.platform === 'win32' && process.env.LOCALAPPDATA
+      ? join(process.env.LOCALAPPDATA, 'VirtualDJ', 'MyLists') : join(app.getPath('documents'), 'VirtualDJ', 'MyLists');
+    const destination = existsSync(nativeFolder) ? nativeFolder : app.getPath('documents');
+    const saved = await dialog.showSaveDialog(mainWindow!, {
+      title: `Exportar a VirtualDJ: ${result.exported} pistas, ${result.omitted.length} omitidas`,
+      defaultPath: join(destination, `${sanitizeSegment(playlist.name)} - Danko.vdjfolder`),
+      filters: [{ name: 'Lista nativa de VirtualDJ', extensions: ['vdjfolder'] }],
+    });
+    if (saved.canceled || !saved.filePath) return null;
+    if (!saved.filePath.toLowerCase().endsWith('.vdjfolder')) throw new Error('El destino debe terminar en .vdjfolder');
+    // Exclusive creation prevents replacing an existing playlist or source file.
+    writeFileSync(saved.filePath, result.content, { encoding: 'utf8', flag: 'wx' });
+    return { path: saved.filePath, exported: result.exported, omitted: result.omitted };
   });
 
   ipcMain.handle(IPC.updateTrackMetadata, (_e, trackId: string, patch: TrackMetadataPatch) =>

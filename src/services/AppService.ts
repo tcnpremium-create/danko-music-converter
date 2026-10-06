@@ -11,6 +11,7 @@ import type {
 import { bestMatch, type MatchFields } from '../matching/matching.js';
 import { analyzePcmMono } from '../analysis/analysis.js';
 import { decodeToMonoPcm } from '../analysis/decode.js';
+import { buildVirtualDjExport } from '../dj/export.js';
 
 export interface AudioAnalysis {
   bpm: number | null;
@@ -340,6 +341,13 @@ export class AppService {
       lines.push(t.sourcePath ?? `# (sin archivo local) ${t.metadata.artist} - ${t.metadata.title}`);
     }
     return lines.join('\n') + '\n';
+  }
+
+  prepareVirtualDjExport(id: string) {
+    if (!this.db.getPlaylist(id)) throw new Error('La playlist ya no existe');
+    const result = buildVirtualDjExport(this.db.getTracks(id), this.db.getJobs(id));
+    if (!result.exported) throw new Error('No hay archivos locales válidos para exportar. Importa música local o completa las conversiones primero.');
+    return result;
   }
 
   clearHistory(): void {
