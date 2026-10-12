@@ -55,7 +55,7 @@ jobs:
           "| SHA256 | ``$sha`` |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           $sha | Out-File -FilePath "release/$($exe.Name).sha256.txt" -NoNewline
       - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: danko-music-converter-setup
           path: |
