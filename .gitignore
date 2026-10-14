@@ -31,3 +31,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Claude Code local restore points
+.claude/restore/
+.claude/settings.local.json
