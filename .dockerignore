@@ -1,8 +1,0 @@
-node_modules
-dist
-release
-.git
-*.log
-resources/ffmpeg
-build/icon.ico
-build/icon.png
